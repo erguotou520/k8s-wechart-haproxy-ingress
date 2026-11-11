@@ -10,6 +10,7 @@ metadata:
   name: fe-https-parity
   namespace: haproxy-controller
 spec:
+  name: https
   acl_list:
   - acl_name: body16m
     criterion: "hdr(host)"
