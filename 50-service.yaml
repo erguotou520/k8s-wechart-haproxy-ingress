@@ -1,0 +1,29 @@
+# NodePort Service：Phase 2 新 DO LB 的后端目标
+# - 80  → 31080 → 容器 8080 (http)
+# - 443 → 31443 → 容器 8443 (https)
+# - 不暴露 1024 stats 端口（无鉴权，避免经 NodePort 泄露）
+# nodePort 为显式指定（已验证集群内 31080/31443 空闲）
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: haproxy-ingress
+    app.kubernetes.io/name: haproxy-kubernetes-ingress
+    app.kubernetes.io/part-of: ingress
+  name: haproxy-kubernetes-ingress
+  namespace: haproxy-controller
+spec:
+  selector:
+    run: haproxy-ingress
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 31080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+    nodePort: 31443

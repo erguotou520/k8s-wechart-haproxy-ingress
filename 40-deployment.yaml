@@ -1,0 +1,83 @@
+# 控制器 Deployment（基于上游官方 v3.2.19 manifest，仅改动：
+# 1. 镜像固定 tag 3.2.19（上游 manifest 不写 tag，默认拉 latest）
+# 2. 增加 readiness 探针 + healthz 容器端口声明）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: haproxy-ingress
+    app.kubernetes.io/name: haproxy-kubernetes-ingress
+    app.kubernetes.io/part-of: ingress
+  name: haproxy-kubernetes-ingress
+  namespace: haproxy-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: haproxy-ingress
+  template:
+    metadata:
+      labels:
+        run: haproxy-ingress
+    spec:
+      serviceAccountName: haproxy-kubernetes-ingress
+      containers:
+      - name: haproxy-ingress
+        image: haproxytech/kubernetes-ingress:3.2.19
+        args:
+          - --configmap=haproxy-controller/haproxy-kubernetes-ingress
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - NET_BIND_SERVICE
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          limits:
+            memory: 2560Mi
+          requests:
+            memory: 2048Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        - name: healthz
+          containerPort: 1042
+        env:
+        - name: TZ
+          value: "Etc/UTC"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP

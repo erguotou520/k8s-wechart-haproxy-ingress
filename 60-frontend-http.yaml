@@ -1,0 +1,51 @@
+# HTTP Frontend（8080）：nginx 行为对齐
+# 1) body 三档限制（对齐 nginx client_max_body_size）：
+#    - 默认 1m（nginx 默认）
+#    - 16m: artexswap(3 hosts), seedfi(3 hosts)
+#    - 无限制: jenkins.weconomy.network, openany.si, openmodels.market
+#    超过档位 → 413（nginx: 413 Request Entity Too Large）
+# 2) XFF 头对齐：先保留客户端自带的 XFF 到 X-Original-Forwarded-For，
+#    再由控制器统一覆写 XFF/X-Real-IP 为源 IP（LB 在链路上不追加）
+apiVersion: ingress.v3.haproxy.org/v3
+kind: Frontend
+metadata:
+  name: fe-http-parity
+  namespace: haproxy-controller
+spec:
+  acl_list:
+  - acl_name: body16m
+    criterion: "hdr(host)"
+    value: "-i dapp.artexswap.xyz app.artexswap.xyz artexswap.xyz dapp.seedfi.trade seedfi.trade www.seedfi.trade"
+  - acl_name: bodyunlim
+    criterion: "hdr(host)"
+    value: "-i jenkins.weconomy.network openany.si openmodels.market"
+  http_request_rule_list:
+  - type: deny
+    deny_status: 413
+    cond: if
+    cond_test: "!body16m !bodyunlim { req.len > 1048576 }"
+  - type: deny
+    deny_status: 413
+    cond: if
+    cond_test: "body16m { req.len > 16777216 }"
+  - type: set-header
+    hdr_name: X-Original-Forwarded-For
+    hdr_format: "%{req.hdr(X-Forwarded-For)}"
+  - type: set-header
+    hdr_name: X-Forwarded-For
+    hdr_format: "%[src]"
+  - type: set-header
+    hdr_name: X-Real-IP
+    hdr_format: "%[src]"
+  - type: set-header
+    hdr_name: X-Forwarded-Host
+    hdr_format: "%[req.hdr(host)]"
+  - type: set-header
+    hdr_name: X-Forwarded-Port
+    hdr_format: "80"
+  - type: set-header
+    hdr_name: X-Scheme
+    hdr_format: "http"
+  - type: set-header
+    hdr_name: X-Forwarded-Proto
+    hdr_format: "http"

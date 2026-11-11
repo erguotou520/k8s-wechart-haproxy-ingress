@@ -1,0 +1,26 @@
+# 全局 ConfigMap：与 ingress-nginx v1.6.4 现网行为对齐
+# - timeout-connect 300s / timeout-server & tunnel 86400s  ← nginx proxy_*_timeout 300s / 86400s
+# - ssl-redirect-code 308 ← nginx http_redirect_code 308
+# - forwarded-for false → XFF 由 Frontend CR 显式设置（见 60/70-frontend-*.yaml）
+# - cr-frontend-http/https 挂载两个 parity Frontend CR
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-kubernetes-ingress
+  namespace: haproxy-controller
+data:
+  # --- TLS/重定向 ---
+  ssl-redirect-port: "443"
+  ssl-redirect-code: "308"
+  # --- 超时（对齐 nginx）---
+  timeout-client: "30s"
+  timeout-connect: "300s"
+  timeout-server: "86400s"
+  timeout-tunnel: "86400s"
+  timeout-check: "2s"
+  timeout-http-keep-alive: "10s"
+  # --- XFF：禁用控制器自动设置，改由 Frontend CR 规则设置，保证与 nginx 一致 ---
+  forwarded-for: "false"
+  # --- Frontend CR 挂载（namespace/name）---
+  cr-frontend-http: "haproxy-controller/fe-http-parity"
+  cr-frontend-https: "haproxy-controller/fe-https-parity"

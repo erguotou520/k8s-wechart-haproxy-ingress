@@ -1,0 +1,55 @@
+# HTTPS Frontend（8443）：nginx 行为对齐
+# 与 fe-http-parity 相同：body 三档限制 + XFF 头对齐
+# 差异：
+# - X-Forwarded-Port "443"，X-Scheme/X-Forwarded-Proto "https"
+# - 追加 HSTS 响应头（仅 https 且 ssl_fc 时）：
+#   max-age=15724800; includeSubDomains（= nginx 现网 180 天 HSTS）
+apiVersion: ingress.v3.haproxy.org/v3
+kind: Frontend
+metadata:
+  name: fe-https-parity
+  namespace: haproxy-controller
+spec:
+  acl_list:
+  - acl_name: body16m
+    criterion: "hdr(host)"
+    value: "-i dapp.artexswap.xyz app.artexswap.xyz artexswap.xyz dapp.seedfi.trade seedfi.trade www.seedfi.trade"
+  - acl_name: bodyunlim
+    criterion: "hdr(host)"
+    value: "-i jenkins.weconomy.network openany.si openmodels.market"
+  http_request_rule_list:
+  - type: deny
+    deny_status: 413
+    cond: if
+    cond_test: "!body16m !bodyunlim { req.len > 1048576 }"
+  - type: deny
+    deny_status: 413
+    cond: if
+    cond_test: "body16m { req.len > 16777216 }"
+  - type: set-header
+    hdr_name: X-Original-Forwarded-For
+    hdr_format: "%{req.hdr(X-Forwarded-For)}"
+  - type: set-header
+    hdr_name: X-Forwarded-For
+    hdr_format: "%[src]"
+  - type: set-header
+    hdr_name: X-Real-IP
+    hdr_format: "%[src]"
+  - type: set-header
+    hdr_name: X-Forwarded-Host
+    hdr_format: "%[req.hdr(host)]"
+  - type: set-header
+    hdr_name: X-Forwarded-Port
+    hdr_format: "443"
+  - type: set-header
+    hdr_name: X-Scheme
+    hdr_format: "https"
+  - type: set-header
+    hdr_name: X-Forwarded-Proto
+    hdr_format: "https"
+  http_response_rule_list:
+  - type: set-header
+    hdr_name: Strict-Transport-Security
+    hdr_format: "max-age=15724800; includeSubDomains"
+    cond: if
+    cond_test: "{ ssl_fc }"
