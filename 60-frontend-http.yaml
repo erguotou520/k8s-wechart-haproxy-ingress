@@ -31,7 +31,7 @@ spec:
     cond_test: "body16m { req.len gt 16777216 }"
   - type: set-header
     hdr_name: X-Original-Forwarded-For
-    hdr_format: "%{req.hdr(X-Forwarded-For)}"
+    hdr_format: "%[req.hdr(X-Forwarded-For)]"
   - type: set-header
     hdr_name: X-Forwarded-For
     hdr_format: "%[src]"

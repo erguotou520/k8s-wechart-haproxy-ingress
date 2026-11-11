@@ -29,7 +29,7 @@ spec:
     cond_test: "body16m { req.len gt 16777216 }"
   - type: set-header
     hdr_name: X-Original-Forwarded-For
-    hdr_format: "%{req.hdr(X-Forwarded-For)}"
+    hdr_format: "%[req.hdr(X-Forwarded-For)]"
   - type: set-header
     hdr_name: X-Forwarded-For
     hdr_format: "%[src]"
@@ -51,6 +51,6 @@ spec:
   http_response_rule_list:
   - type: set-header
     hdr_name: Strict-Transport-Security
-    hdr_format: "max-age=15724800; includeSubDomains"
+    hdr_format: "\"max-age=15724800; includeSubDomains\""
     cond: if
     cond_test: "{ ssl_fc }"
