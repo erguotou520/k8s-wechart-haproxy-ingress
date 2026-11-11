@@ -24,11 +24,11 @@ spec:
   - type: deny
     deny_status: 413
     cond: if
-    cond_test: "!body16m !bodyunlim { req.len > 1048576 }"
+    cond_test: "!body16m !bodyunlim { req.len gt 1048576 }"
   - type: deny
     deny_status: 413
     cond: if
-    cond_test: "body16m { req.len > 16777216 }"
+    cond_test: "body16m { req.len gt 16777216 }"
   - type: set-header
     hdr_name: X-Original-Forwarded-For
     hdr_format: "%{req.hdr(X-Forwarded-For)}"
